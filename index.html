@@ -1,0 +1,101 @@
+<html lang="ja-JP">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+  <meta name="viewport" content="viewport-fit=cover,width=device-width,initial-scale=1,user-scalable=no">
+  <meta name="format-detection" content="telephone=no">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/0.8.9/jquery.csv.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
+  <script src="https://fastcdn.org/FileSaver.js/1.1.20151003/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/1.0.29/encoding.js"></script>
+</head>
+<body class="result-page">
+  <div id="dvImportSegments" class="fileupload ">
+    <fieldset>
+      <legend>Select your CSV File</legend>
+      <input type="file" name="File Upload" id="txtFileUpload" accept=".csv" />
+    </fieldset>
+  </div>
+  <script>
+    $(function () {
+      document.getElementById('txtFileUpload').addEventListener('change', upload, false);
+      function browserSupportFileUpload() {
+      var isCompatible = false;
+          if (window.File && window.FileReader && window.FileList && window.Blob) {
+            isCompatible = true;
+          }
+          return isCompatible;
+      }
+
+      function upload(evt) {
+      if (!browserSupportFileUpload()) {
+        alert('The File APIs are not fully supported in this browser!');
+        } else {
+          var data = null;
+          var file = evt.target.files[0];
+          var title = [];
+          var reader = new FileReader();
+          reader.readAsText(file);
+          reader.onload = function(event) {
+            var csvData = event.target.result;
+            data = $.csv.toArrays(csvData);
+            if (data && data.length > 0) {
+              var onlyResult = [];
+              var firstTime = true;
+              var firstTimeTitle = true;
+              data.map(function(datacsv, index) {
+                var text = "";
+                datacsv.map(function(datastring, index) {
+                  if (index === datacsv.length - 1) {
+                    text += datastring;
+                  } else {
+                    if (datastring.includes('{')) {
+                      var obj = JSON.parse(datastring);
+                      for (let value of Object.entries(obj)) {
+                        if (firstTimeTitle) {
+                          title.push(value[0]);
+                          text += value[1] + ',';
+                        } else {
+                          text += value[1] + ',';
+                        }
+                      }
+                      firstTimeTitle = false;
+                    } else {
+                      text += datastring + ',';
+                    }
+                  }
+                })
+                if (firstTime) {
+                  title.push(text.replace(',result,reg_date', ''));
+                  firstTime = false;
+                } else {
+                  onlyResult.push(text);
+                }
+              });
+              title.push('reg_date');
+              onlyResult.unshift(title.join(','));
+              onlyResult = onlyResult.join('\n');
+              var changeResult = [];
+
+              for (let i = 0; i < onlyResult.length; i += 1) {
+                changeResult.push(onlyResult.charCodeAt(i));
+              }
+              const shiftJisCodeList = Encoding.convert(changeResult, 'sjis', 'unicode');
+              const uInt8List = new Uint8Array(shiftJisCodeList);
+              var file = new Blob([uInt8List], { type: 'text/csv' });
+              saveAs(file, "dataResult"+".csv");
+            } else {
+              alert('No data to import!');
+            }
+          };
+          reader.onerror = function() {
+              alert('Unable to read ' + file.fileName);
+          };
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
